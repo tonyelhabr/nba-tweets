@@ -1,12 +1,11 @@
 ---
 author: ""
 date: ""
-title: "Analysis"
+title: "Analysis of NBA Team Twitter Accounts"
 output:
   flexdashboard::flex_dashboard:
     storyboard: true
-    theme: flatly
-    highlight: pygments
+    theme: spacelab
 ---
 
 ```{r setup, include = FALSE}
@@ -16,25 +15,29 @@ knitr::opts_chunk$set(
   # include = FALSE,
   # cache = TRUE,
   # results = "markdown",
-  # results = "hide",
+  results = "hide",
   # fig.align = "center",
   # fig.show = "asis",
-  fig.width = 10,
-  fig.height = 10,
+  fig.width = 5,
+  fig.height = 5,
   # out.width = 6,
   # out.height = 6,
   warning = FALSE,
   message = FALSE
 )
 
+string_id_filt_main_long <- "San Antonio Spurs"
+string_id_filt_main <- "SAS"
 string_id <- "team"
 string_id_plural <- "teams"
+string_id_filt_by2 <- "the Southwest division"
 ```
 
 
 ```{r packages, include = FALSE}
-library("dplyr")
-library("rlang")
+# library("dplyr")
+# library("rlang")
+library("tidyverse")
 library("tetext") # Personal package.
 library("tedata") # Personal package.
 ```
@@ -60,53 +63,63 @@ data_supp <-
   tedata::nba_tms_colors %>% 
   rename(screen_name = twitter_screen_name) %>%
   mutate(screen_name = tolower(screen_name)) %>% 
-  select(tm, conference, division, screen_name, color = teamcolors_primary)
+  select(id = tm, conference, division, screen_name, color = teamcolors_primary)
 
 data <-
   data_raw %>% 
   mutate(screen_name = tolower(screen_name)) %>% 
   inner_join(data_supp, by = c("screen_name")) %>% 
-  select(id = tm, color, everything())
+  select(id, color, everything())
 
 data %>%
-  count(id, screen_name, sort = TRUE)
+  count(id, screen_name, sort = TRUE) -> z2
 ```
 
 ```{r setup_vars, include = FALSE}
 # ids <- data %>% pull_distinctly(id)
 # colors_filt <- data %>% pull_distinctly(color)
-ids <- data_supp_select %>% pull(id)
-colors_filt <- data_supp_select %>% pull(color)
+ids <- data_supp %>% pull(id)
+colors_filt <- data_supp %>% pull(color)
 
 # ids_filt <- c("SAS", "GSW", "HOU", "CLE", "LAL", "SAC")
 # ids_filt <- ids
 ids_filt <-
   data_supp %>%
-  # filter(conference %in% "Western") %>% 
-  pull(tm)
+  pull(id)
 
 idxs_filt <- match(ids_filt, ids)
 colors_filt <- colors_filt[idxs_filt]
 names(colors_filt) <- ids_filt
 
+idxs_filt <- match(ids_filt, ids)
+colors_filt <- colors_filt[idxs_filt]
+names(colors_filt) <- ids_filt
+
+ids_filt_2 <-
+  data_supp %>%
+  filter(conference %in% "Western") %>% 
+  pull(id)
+idxs_filt_2 <- match(ids_filt_2, ids)
+colors_filt_2 <- colors_filt[idxs_filt_2]
+names(colors_filt_2) <- ids_filt_2
+
 ids_filt_by2 <-
   data_supp %>%
   filter(division %in% "Southwest") %>% 
-  pull(tm)
+  pull(id)
 
 idxs_filt_by2 <- match(ids_filt_by2, ids)
 colors_filt_by2 <- colors_filt[idxs_filt_by2]
 names(colors_filt_by2) <- ids_filt_by2
 
-id_filt_long <- "San Antonio Spurs"
 id_filt <- "SAS"
 idx_filt <- match(id_filt, ids)
 color_filt <- colors_filt[idx_filt]
 
-color_filt_inv <- temisc::get_color_hex_inverse(color_filt)
-colors_filt_dual <- c(color_filt, color_filt_inv)
-lab_other <- paste0("Not ", id_filt)
-names(colors_filt_dual) <- c(id_filt, lab_other)
+# color_filt_inv <- temisc::get_color_hex_inverse(color_filt)
+# colors_filt_dual <- c(color_filt, color_filt_inv)
+# lab_other <- paste0("Not ", id_filt)
+# names(colors_filt_dual) <- c(id_filt, lab_other)
 ```
 
 ```{r data_facet_trim, include = FALSE}
@@ -119,10 +132,7 @@ data_facet <-
 id_cnts <-
   data_facet %>%
   count(id, sort = TRUE)
-id_cnts_top <- id_cnts %>% slice(1) %>% pull(id)
-id_cnts_top_cnt <- id_cnts %>% slice(1) %>% pull(n)
-id_cnts_bot <- id_cnts %>% slice(nrow(.)) %>% pull(id)
-id_cnts_bot_cnt <- id_cnts %>% slice(nrow(.)) %>% pull(n)
+
 
 data_facet_timefilter <-
   data_facet %>%
@@ -139,6 +149,15 @@ data_facet_trim <-
     end = data_facet_timefilter$date_end
   )
 
+id_cnts_trim <-
+  data_facet_trim %>%
+  count(id, sort = TRUE)
+id_cnts_trim
+
+id_cnts_trim_top <- id_cnts_trim %>% slice(1) %>% pull(id)
+id_cnts_trim_top_cnt <- id_cnts_trim %>% slice(1) %>% pull(n)
+id_cnts_trim_bot <- id_cnts_trim %>% slice(nrow(.)) %>% pull(id)
+id_cnts_trim_bot_cnt <- id_cnts_trim %>% slice(nrow(.)) %>% pull(n)
 timestamp_min <- min(data_facet$timestamp)
 timestamp_max <- max(data_facet$timestamp)
 
@@ -151,17 +170,22 @@ timestamp_first_end <- data_facet_timefilter$date_start
 This storyboard investigates the tweets from the official Twitter accounts
 for each NBA Western Conference team. (Abbreviations of team names are used in visualizations.)
 Where analysis of a single team is performed, 
-the content of the `r id_filt_long` (`r id_filt`) account is used.
+the content of the `r string_id_filt_main_long` (`r string_id_filt_main`) and
+the other `r string_id_plural` in the `r string_id_filt_by2` are used.
 
 ### __Temporal Count:__ From when did the extracted data come?
 
-```{r viz_time_facet_all, echo = FALSE}
+```{r viz_time_facet_all, echo = FALSE, fig.width = 12, fig.height = 6}
+id_cnts_trim_ids <- id_cnts_trim %>% arrange(desc(n)) %>% pull(id)
+# id_cnts_trim_ids
 viz_time_facet_all <-
   data_facet_trim %>%
+  mutate(id = factor(id, levels = id_cnts_trim_ids)) %>% 
   visualize_time_facet(
     timebin = timestamp,
     color = id,
     facet = id,
+    # scale_manual_params = list(values = viridisLite::cividis(n = 30)),
     scale_manual_params = list(values = colors_filt, breaks = NULL),
     facet_params = list(scales = "fixed", ncol = NULL, nrow = NULL),
     theme_params = list(axis.text = ggplot2::element_text(size = ggplot2::rel(0.5))),
@@ -175,9 +199,9 @@ viz_time_facet_all
 The first tweet shown is at
 `r timestamp_last_start`, and the last tweet shown is at `r timestamp_first_end`.
 The `r string_id` with the most tweets during this time is
-`r id_cnts_top` (`r id_cnts_top_cnt`).
+`r id_cnts_trim_top` (`r id_cnts_trim_top_cnt`).
 The `r string_id` with the least is
-`r id_cnts_bot` (`r id_cnts_bot_cnt`).
+`r id_cnts_trim_bot` (`r id_cnts_trim_bot_cnt`).
 
 _NOTE:_
 Only tweets occuring between the last "first" tweet 
@@ -192,34 +216,28 @@ across entities in order to "normalize" the data.
 ### __Temporal Count:__ Which hours of the day are the most common for each `r string_id`?
 
 
-```{r viz_time_facet_hh, echo = FALSE}
-viz_time_facet_hh <-
+```{r viz_time_facet_hh, echo = FALSE, fig.width = 12, fig.height = 6}
+# hh_tier <- 1:6
+# hh_tier_labs <- paste0(((hh_tier - 1) * 4) + 1, "-", hh_tier * 4)
+# reorder(hh_tier_labs, hh_tier)
+viz_time_facet_hh_tier <-
   data_facet_trim %>%
   mutate(hh = lubridate::hour(timestamp)) %>% 
+  mutate(hh_tier = ceiling((hh + 1) / 4)) %>%
+  mutate(hh_tier_lab = paste0(((hh_tier - 1) * 4) + 1, "-", hh_tier * 4)) %>% 
+  mutate(hh_tier_lab = reorder(hh_tier_lab, hh_tier)) %>% 
   visualize_time_facet(
-    timebin = hh,
+    # timebin = hh,
+    # timebin = hh_tier,
+    timebin = hh_tier_lab,
     color = id,
     facet = id,
     scale_manual_params = list(values = colors_filt),
-    facet_params = list(scales = "fixed", ncol = NULL, nrow = NULL),
-    theme_params = list(axis.text = ggplot2::element_text(size = ggplot2::rel(0.5))),
+    facet_params = list(scales = "free_y", ncol = NULL, nrow = NULL),
+    # theme_params = list(axis.text = ggplot2::element_blank()),
     labs_params = list(title = NULL)
   )
-viz_time_facet_hh
-```
-
-```{r viz_time_facet_hh_2, include = FALSE, eval = FALSE}
-viz_time_facet_hh_2 <-
-  data_facet_trim %>% 
-  visualize_time_hh(
-    timebin = time,
-    color = id,
-    facet = id,
-    scale_manual_params = list(values = colors_filt),
-    labs_params = list(title = NULL)
-  )
-viz_time_facet_hh_2
-
+viz_time_facet_hh_tier
 ```
 
 ***
@@ -263,16 +281,18 @@ bigrams <-
 ### __Word (Single) Frequency:__ What are the most common words for each `r string_id`?
 
 
-```{r viz_unigram_cnts_facet, echo = FALSE}
+```{r viz_unigram_cnts_facet, echo = FALSE, fig.width = 15, fig.height = 8}
 viz_unigram_cnts_facet <-
   unigrams %>%
   visualize_cnts_facet(
     token = word,
     facet = id,
     color = id,
-    num_top = 5,
+    num_top = 3,
     scale_manual_params = list(values = colors_filt),
-    theme_params = list(axis.text = ggplot2::element_text(size = ggplot2::rel(0.5))),
+    # theme_params = list(axis.text = ggplot2::element_text(size = ggplot2::rel(1))),
+    theme_params = list(axis.text.y = ggplot2::element_text(size = ggplot2::rel(1.2)),
+                        axis.text.x = ggplot2::element_blank()),
     labs_params = list(title = NULL)
   )
 viz_unigram_cnts_facet
@@ -285,7 +305,7 @@ these accounts are used primarily for promotional purposes.)
 Aside from team-level references, the team accounts mention
 team players a lot, which is not suprising.
 
-### __Word (Single) Frequency:__ What are the most common words for each `r string_id`?  (wordcloud)
+### __Word (Single) Frequency:__ What are the most common words for each `r string_id` in `r string_id_filt_by2`?
 
 ```{r viz_unigram_cnts_wordcloud_facet, echo = FALSE}
 ncol <- ceiling(sqrt(length(ids_filt_by2)))
@@ -310,7 +330,7 @@ par(mfrow = c(1, 1))
 
 ***
 
-_NOTE:_ Due to graphics limitations, only the subset of chosen `r string_id_plural` is shown.
+_NOTE:_ Due to graphics limitations, only the `r string_id_plural` in `r string_id_filt_by2` are shown.
 
 ### __Word (Pairs) Frequency:__ What are the most common pairs of words for each `r string_id`?
 
@@ -328,16 +348,20 @@ bigram_freqs %>%
   dplyr::do(head(., 2))
 ```
 
-```{r viz_bigram_freqs, echo = FALSE}
+```{r viz_bigram_freqs, echo = FALSE, fig.width = 10, fig.height = 5}
 viz_bigram_freqs <-
-  bigrams %>%
+  bigrams %>% 
+  # unigrams %>%
+  # filter(id %in% ids_filt_2) %>% 
+  filter(id %in% ids_filt_by2) %>% 
   visualize_bigram_freqs(
     token = word,
     facet = id,
     color = id,
-    num_top = 1,
+    num_top = 3,
+    point_max_size = 20,
     scale_manual_params = list(values = colors_filt),
-    theme_params = list(axis.text = ggplot2::element_text(size = ggplot2::rel(0.75))),
+    theme_params = list(axis.text = ggplot2::element_text(size = ggplot2::rel(1))),
     labs_params = list(title = NULL)
   )
 viz_bigram_freqs
@@ -395,7 +419,7 @@ unigram_freqs_facet_by2 <-
 unigram_freqs_facet_by2
 ```
 
-### __Word (Single) Frequency:__ What are the most common words, relative to `r id_filt`?
+### __Word (Single) Frequency:__ How different is the vocabulary of each `r string_id` in the `r string_id_filt_by2` (relative to `r string_id_filt_main`)?
 
 ```{r viz_unigram_freqs_facet_by2, echo = FALSE}
 viz_unigram_freqs_facet_by2 <-
@@ -406,6 +430,7 @@ viz_unigram_freqs_facet_by2 <-
     facet = id,
     filter_facet = TRUE,
     facet_main = id_filt,
+    # theme_params = list(axis.text = ggplot2::element_text(size = ggplot2::rel(1))),
     labs_params = list(title = NULL)
   )
 viz_unigram_freqs_facet_by2
@@ -413,7 +438,8 @@ viz_unigram_freqs_facet_by2
 
 ***
 
-Some commentary...
+The words diverging most from the splitting line are used much more significantly by
+one `r string_id` than the other.
 
 ```{r unigram_logratios_facet_by2, include = FALSE, eval = FALSE}
 unigram_logratios_facet_by2 <-
@@ -427,7 +453,7 @@ unigram_logratios_facet_by2 <-
 unigram_logratios_facet_by2
 ```
 
-### __Word (Single) Log-Ratio Differences:__ How differnet is the word, relative to `r id_filt`?
+### __Word (Single) Log-Ratio Differences:__ What are the most distinct words used by each `r string_id` in the `r string_id_filt_by2` (relative to `r string_id_filt_main`)?
 
 
 ```{r viz_unigram_logratios_facet_by2, echo = FALSE}
@@ -440,9 +466,8 @@ viz_unigram_logratios_facet_by2 <-
     filter_facet = TRUE,
     facet_main = id_filt,
     num_top = 3,
-    # lab_other = lab_other,
     color_main = color_filt,
-    # scale_manual_params = list(values = colors_filt_dual),
+    theme_params = list(axis.text = ggplot2::element_text(size = ggplot2::rel(1))),
     labs_params = list(title = NULL)
   )
 viz_unigram_logratios_facet_by2
@@ -450,7 +475,13 @@ viz_unigram_logratios_facet_by2
 
 ***
 
-### __Word (Single) Sentiment Differences:__ How different is each `r string_id`'s tone, relative to `r id_filt`?
+The log-ratio differences of words used by pairs of `r string_id_plural`
+provides a quantitative look at word usage.
+_NOTE:_ The number of words shown for each `r string_id` and each direction may
+not be even due to lack of sufficient words meeting the underlying criteria.
+
+
+### __Word (Single) Sentiment Differences:__ How different is each the tone of each `r string_id` in the `r string_id_filt_by2` (relative to `r string_id_filt_main`)?
 
 ```{r viz_unigram_sentratios_facet_by2, echo = FALSE, eval = FALSE}
 viz_unigram_sentratios_facet_by2 <-
@@ -476,29 +507,32 @@ viz_unigram_sentratios_facet_by2
 ```{r viz_unigram_sentratios_facet_by2_list, echo = FALSE}
 sents_filt <- c("positive", "negative")
 viz_unigram_sentratios_facet_by2_list <-
-  sents_filt,
-purrr::map(
-  ~visualize_sentratios_facet_by2(
-    data =unigrams %>% filter(id %in% ids_filt_by2)
-    token = word,
-    facet = id,
-    filter_facet = TRUE,
-    facet_main = id_filt,
-    filter_sent = TRUE,
-    sent_main = .x,
-    num_top = 3,
-    # lab_other = lab_other,
-    color_main = color_filt,
-    # scale_manual_params = list(values = colors_filt_dual),s
-    labs_params = list(title = NULL, subtitle = .x)
+  purrr::map(
+    sents_filt,
+    ~visualize_sentratios_facet_by2(
+      data = unigrams %>% filter(id %in% ids_filt_by2),
+      token = word,
+      facet = id,
+      filter_facet = TRUE,
+      facet_main = id_filt,
+      filter_sent = TRUE,
+      sent_main = .x,
+      num_top = 3,
+      # lab_other = lab_other,
+      color_main = color_filt,
+      # scale_manual_params = list(values = colors_filt_dual),s
+      labs_params = list(title = NULL, subtitle = .x)
+    )
   )
-)
 viz_unigram_sentratios_facet_by2_list
 ```
  
- ***
+***
 
-Some commentary...
+The computations used for identfying strongest sentiment differences
+is identical to that for log-ratio differences, with an added layer of sentiment "scoring".
+_NOTE:_ Again, the number of words shown for each pair of `r string_id_plural` may
+not be even.
 
 
   
