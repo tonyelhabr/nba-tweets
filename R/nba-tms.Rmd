@@ -5,7 +5,7 @@ title: "Analysis of NBA Team Twitter Accounts"
 output:
   flexdashboard::flex_dashboard:
     storyboard: true
-    theme: spacelab
+    theme: journal
 ---
 
 ```{r setup, include = FALSE}
@@ -13,15 +13,15 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 knitr::opts_chunk$set(
   echo = TRUE,
   # include = FALSE,
-  # cache = TRUE,
+  cache = TRUE,
   # results = "markdown",
   results = "hide",
   # fig.align = "center",
   # fig.show = "asis",
   fig.width = 5,
   fig.height = 5,
-  # out.width = 6,
-  # out.height = 6,
+  out.width = 5,
+  out.height = 5,
   warning = FALSE,
   message = FALSE
 )
@@ -72,7 +72,7 @@ data <-
   select(id, color, everything())
 
 data %>%
-  count(id, screen_name, sort = TRUE) -> z2
+  count(id, screen_name, sort = TRUE)
 ```
 
 ```{r setup_vars, include = FALSE}
@@ -158,20 +158,50 @@ id_cnts_trim_top <- id_cnts_trim %>% slice(1) %>% pull(id)
 id_cnts_trim_top_cnt <- id_cnts_trim %>% slice(1) %>% pull(n)
 id_cnts_trim_bot <- id_cnts_trim %>% slice(nrow(.)) %>% pull(id)
 id_cnts_trim_bot_cnt <- id_cnts_trim %>% slice(nrow(.)) %>% pull(n)
-timestamp_min <- min(data_facet$timestamp)
-timestamp_max <- max(data_facet$timestamp)
 
-timestamp_last_start <- data_facet_timefilter$date_start
-timestamp_first_end <- data_facet_timefilter$date_start
+rgx_date_us <- "%m-%d-%Y"
+timestamp_min <-  format(min(data_facet$timestamp), rgx_date_us)
+timestamp_max <- format(max(data_facet$timestamp), rgx_date_us)
+
+timestamp_last_start <- format(data_facet_timefilter$date_start, rgx_date_us)
+timestamp_first_end <- format(data_facet_timefilter$date_end, rgx_date_us)
 ```
 
-### About
+### About This Storyboard
+
+<div style = "width:200px; height=171px; align=middle">
+![](img/nba-twitter.jpg)
+</div>
+
+<br>
+
+```{r about_img, echo = FALSE}
+
+# path_img <- file.path("R", "img", "nba-twitter.png")
+# file.exists(path_img)
+# path_img <- "gritaradio.com/files/2016/07/NBAT.jpg"
+# knitr::include_url(path_img)
+```
 
 This storyboard investigates the tweets from the official Twitter accounts
-for each NBA Western Conference team. (Abbreviations of team names are used in visualizations.)
-Where analysis of a single team is performed, 
-the content of the `r string_id_filt_main_long` (`r string_id_filt_main`) and
+for each `r string_id`in the NBA. (Abbreviations are used in visualizations.)
+The last ~3300 tweets on the timeline of each official `r string_id` account
+was retrieved using the `rtweet` `R` package on 03-04-2018.
+
+Much of the text analysis is inspired by the work of 
+[David Robinson](http://varianceexplained.org/) 
+and 
+[Julia Silge](https://juliasilge.com/blog/), 
+and their co-authored
+[_Tidy Text Mining with R_ book](https://www.tidytextmining.com/)
+
+_NOTE:_
+Due to graphical/computational reasons, some visualization are exclusive
+to either a single `r string_id` or a subset of `r string_id_plural`.
+In these cases, the
+content of the `r string_id_filt_main_long` (`r string_id_filt_main`) and
 the other `r string_id_plural` in the `r string_id_filt_by2` are used.
+
 
 ### __Temporal Count:__ From when did the extracted data come?
 
@@ -204,11 +234,12 @@ The `r string_id` with the least is
 `r id_cnts_trim_bot` (`r id_cnts_trim_bot_cnt`).
 
 _NOTE:_
-Only tweets occuring between the last "first" tweet 
+Only tweets occurring between the last "first" tweet 
 and the first "last" tweet across all entities are shown.
 In reality, some timelines have tweets going back farther
 and/or occurring more recently in time.
-(The actual first tweet occurs at `r timestamp_min`, and the actual
+(The actual first tweet that was retrieved across all `r string_id_plural`
+occurs at `r timestamp_min`, and the actual
 last tweet occurs at `r timestamp_max`.) Nonetheless, tweets are truncated
 across entities in order to "normalize" the data.
 
@@ -303,7 +334,7 @@ viz_unigram_cnts_facet
 It's evident that team accounts reference themselves a lot. (After all,
 these accounts are used primarily for promotional purposes.)
 Aside from team-level references, the team accounts mention
-team players a lot, which is not suprising.
+team players a lot, which is not surprising.
 
 ### __Word (Single) Frequency:__ What are the most common words for each `r string_id` in `r string_id_filt_by2`?
 
@@ -477,6 +508,7 @@ viz_unigram_logratios_facet_by2
 
 The log-ratio differences of words used by pairs of `r string_id_plural`
 provides a quantitative look at word usage.
+
 _NOTE:_ The number of words shown for each `r string_id` and each direction may
 not be even due to lack of sufficient words meeting the underlying criteria.
 
@@ -529,8 +561,9 @@ viz_unigram_sentratios_facet_by2_list
  
 ***
 
-The computations used for identfying strongest sentiment differences
+The computations used for  strongest sentiment differences
 is identical to that for log-ratio differences, with an added layer of sentiment "scoring".
+
 _NOTE:_ Again, the number of words shown for each pair of `r string_id_plural` may
 not be even.
 
